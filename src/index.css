@@ -1,15 +1,17 @@
 :root {
-  --bg: #14170f;
-  --surface: #1e2318;
-  --surface-alt: #272d1f;
-  --border: #343b2a;
-  --text: #f2f0e6;
-  --text-muted: #9a9c88;
-  --accent: #9ccc4a;
-  --accent-strong: #b5e06a;
-  --accent-ink: #14170f;
-  --success: #7fd35b;
-  --danger: #ff6b5e;
+  --bg: #151515;
+  --surface: #262626;
+  --surface-alt: #303030;
+  --border: #3f3f3f;
+  --text: #f5f5f4;
+  --text-muted: #a8a29e;
+  /* Terracota: fondo de botones (con letra blanca) y, más claro, para texto sobre el fondo. */
+  --accent: #b0602f;
+  --accent-strong: #c2703d;
+  --accent-ink: #ffffff;
+  --accent-text: #e3915c;
+  --success: #4ade80;
+  --danger: #f87171;
   --radius: 16px;
   color-scheme: dark;
 }
@@ -110,7 +112,7 @@ main {
 }
 
 .nav-bottom a.active {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 700;
 }
 
@@ -155,7 +157,7 @@ h2 {
 
 .field input:focus,
 .field select:focus {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: -1px;
 }
 
@@ -278,10 +280,10 @@ h2 {
 /* Pregunta de Confirmacion ("¿Eliminar...?" con Cancelar / Sí). */
 .confirmar {
   margin-top: 10px;
-  border: 1px solid rgba(255, 107, 94, 0.4);
+  border: 1px solid rgba(248, 113, 113, 0.4);
   border-radius: var(--radius);
   padding: 14px;
-  background: rgba(255, 107, 94, 0.08);
+  background: rgba(248, 113, 113, 0.08);
 }
 
 .confirmar p {
@@ -305,7 +307,7 @@ h2 {
   border-radius: var(--radius);
   border: none;
   background: var(--danger);
-  color: #1a0f0d;
+  color: #1c0d0d;
   font-size: 0.95rem;
   font-weight: 700;
 }
@@ -328,7 +330,7 @@ h2 {
   margin-top: 10px;
   padding: 14px;
   border-radius: var(--radius);
-  border: 1px solid rgba(255, 107, 94, 0.4);
+  border: 1px solid rgba(248, 113, 113, 0.4);
   background: transparent;
   color: var(--danger);
   font-size: 0.95rem;
@@ -343,9 +345,9 @@ h2 {
 }
 
 .msg.error {
-  background: rgba(255, 107, 94, 0.15);
+  background: rgba(248, 113, 113, 0.15);
   color: var(--danger);
-  border: 1px solid rgba(255, 107, 94, 0.35);
+  border: 1px solid rgba(248, 113, 113, 0.35);
 }
 
 .total-bar {
@@ -353,6 +355,7 @@ h2 {
   justify-content: space-between;
   align-items: baseline;
   padding: 4px 4px 10px;
+  margin-bottom: 10px;
   border-bottom: 1px solid var(--border);
   color: var(--text-muted);
   font-size: 0.85rem;
@@ -375,16 +378,22 @@ h2 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 4px;
-  background: none;
-  border: none;
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+  padding: 13px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
   color: var(--text);
   text-align: left;
 }
 
 .lista-item:active {
-  background: var(--surface);
+  background: var(--surface-alt);
+}
+
+/* Dentro de una hoja (que ya tiene el color de tarjeta), un tono más claro para que resalten. */
+.modal-sheet .lista-item {
+  background: var(--surface-alt);
 }
 
 .lista-texto {
@@ -399,8 +408,9 @@ h2 {
   overflow-wrap: anywhere;
 }
 
-.lista-item-fija:active {
-  background: none;
+/* Las filas que no se pueden tocar (gastos del ternero) no cambian de color al presionarlas. */
+.modal-sheet .lista-item-fija:active {
+  background: var(--surface-alt);
 }
 
 .lista-detalle {
@@ -584,15 +594,15 @@ h2 {
 }
 
 .toast.success {
-  background: #24361a;
+  background: #16301f;
   color: var(--success);
-  border: 1px solid rgba(127, 211, 91, 0.35);
+  border: 1px solid rgba(74, 222, 128, 0.35);
 }
 
 .toast.error {
-  background: #3a1f1c;
+  background: #3b1d1d;
   color: var(--danger);
-  border: 1px solid rgba(255, 107, 94, 0.35);
+  border: 1px solid rgba(248, 113, 113, 0.35);
 }
 
 @keyframes toast-in {
