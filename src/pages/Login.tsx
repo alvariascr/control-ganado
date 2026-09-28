@@ -24,7 +24,7 @@ export default function Login() {
     <div className="login-wrap">
       <div className="login-card">
         <h1>🐂 Control Ganado</h1>
-        <p>Inicia sesión para registrar compras y ventas.</p>
+        <p>Inicia sesión para registrar compras y ganado.</p>
         {error && <div className="msg error">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="field">
