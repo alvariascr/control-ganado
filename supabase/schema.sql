@@ -1,134 +1,421 @@
--- Esquema completo de la base de datos de Control Ganado (para una base NUEVA).
--- Correr completo en Supabase: Dashboard -> SQL Editor -> New query -> pegar y ejecutar (Run).
+-- Esquema completo de la base de Control Ganado, para una base NUEVA de Supabase.
+-- Correr completo en Supabase: SQL Editor -> New query -> pegar -> Run.
 -- Si la base ya existe, no correr esto: usar los scripts de supabase/migraciones/ que falten.
 --
--- - animales: cada ternero con lo que costó y, cuando se vende, en cuánto se vendió.
--- - compras: productos (concentrado, pacas, medicina...). Pueden ser para todos los terneros
---   (se dividen entre los que estaban en la finca ese día) o para uno específico.
+-- Se genera con pg_dump después de aplicar en orden todos los scripts de migraciones/, así
+-- que siempre coincide con ellos. Después de correrlo, crear las cuentas en Authentication y
+-- asignarles su finca:  select asignar_finca('correo@ejemplo.com', 'Nombre de la finca');
 
-create extension if not exists "pgcrypto";
+-- Las funciones se crean antes que las tablas que usan; esto evita que Postgres las revise
+-- en ese momento.
+set check_function_bodies = false;
 
--- ============ TABLAS ============
 
-create table if not exists animales (
-  id uuid primary key default gen_random_uuid(),
-  nombre text not null,
-  fecha_compra date not null default current_date,
-  precio_compra numeric not null check (precio_compra >= 0),
-  -- Venta: las dos vacías mientras el ternero esté en la finca. precio_venta es lo que
-  -- realmente entró, ya restando comisión de subasta, flete, etc.
-  fecha_venta date,
-  precio_venta numeric check (precio_venta is null or precio_venta >= 0),
-  usuario_id uuid references auth.users(id) default auth.uid(),
-  creado_en timestamptz not null default now(),
-  -- Si murió. Un ternero puede estar vendido o muerto, no las dos cosas.
-  fecha_muerte date,
-  check ((fecha_venta is null) = (precio_venta is null)),
-  check (fecha_venta is null or fecha_venta >= fecha_compra),
-  constraint animales_fecha_muerte_valida
-    check (fecha_muerte is null or fecha_muerte >= fecha_compra),
-  constraint animales_vendido_o_muerto
-    check (fecha_venta is null or fecha_muerte is null),
-  -- Máximos (los mismos que en src/lib/limites.ts).
-  constraint animales_precio_compra_maximo check (precio_compra <= 1000000),
-  constraint animales_precio_venta_maximo check (precio_venta <= 1000000)
+\restrict hChPDiicxKjdy4Svo2DiPIBzTn0RNsBRs1ce9FPdcdbAfcoockNboYmhUO8hps5
+
+-- Name: public; Type: SCHEMA; Schema: -; Owner: -
+
+
+-- Name: asignar_finca(text, text); Type: FUNCTION; Schema: public; Owner: -
+
+CREATE FUNCTION public.asignar_finca(p_correo text, p_finca text) RETURNS text
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+declare
+  v_usuario uuid;
+  v_finca uuid;
+begin
+  select id into v_usuario from auth.users where lower(email) = lower(trim(p_correo));
+  if v_usuario is null then
+    raise exception 'No existe la cuenta %. Créala primero en Authentication -> Add user.', p_correo;
+  end if;
+  insert into fincas (nombre) values (trim(p_finca))
+  on conflict (nombre) do nothing;
+  select id into v_finca from fincas where nombre = trim(p_finca);
+  insert into cuentas_finca (usuario_id, finca_id) values (v_usuario, v_finca)
+  on conflict (usuario_id) do update set finca_id = excluded.finca_id;
+  return p_correo || ' ahora entra a ' || trim(p_finca);
+end;
+$$;
+
+-- Name: mi_finca(); Type: FUNCTION; Schema: public; Owner: -
+
+CREATE FUNCTION public.mi_finca() RETURNS uuid
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  select finca_id from cuentas_finca where usuario_id = auth.uid();
+$$;
+
+-- Name: animales; Type: TABLE; Schema: public; Owner: -
+
+CREATE TABLE public.animales (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    nombre text NOT NULL,
+    fecha_compra date DEFAULT CURRENT_DATE NOT NULL,
+    precio_compra numeric NOT NULL,
+    fecha_venta date,
+    precio_venta numeric,
+    usuario_id uuid DEFAULT auth.uid(),
+    creado_en timestamp with time zone DEFAULT now() NOT NULL,
+    fecha_muerte date,
+    finca_id uuid DEFAULT public.mi_finca() NOT NULL,
+    tipo text DEFAULT 'Ternero'::text NOT NULL,
+    color text,
+    fecha_nacimiento date,
+    madre_id uuid,
+    duenio text,
+    lugar text DEFAULT 'Finca'::text NOT NULL,
+    nota text,
+    CONSTRAINT animales_check CHECK (((fecha_venta IS NULL) = (precio_venta IS NULL))),
+    CONSTRAINT animales_check1 CHECK (((fecha_venta IS NULL) OR (fecha_venta >= fecha_compra))),
+    CONSTRAINT animales_duenio_check CHECK (((duenio IS NULL) OR (length(TRIM(BOTH FROM duenio)) > 0))),
+    CONSTRAINT animales_fecha_muerte_valida CHECK (((fecha_muerte IS NULL) OR (fecha_muerte >= fecha_compra))),
+    CONSTRAINT animales_lugar_check CHECK ((lugar = ANY (ARRAY['Finca'::text, 'Potrero'::text]))),
+    CONSTRAINT animales_no_es_su_propia_madre CHECK (((madre_id IS NULL) OR (madre_id <> id))),
+    CONSTRAINT animales_precio_compra_check CHECK ((precio_compra >= (0)::numeric)),
+    CONSTRAINT animales_precio_compra_maximo CHECK ((precio_compra <= (1000000)::numeric)),
+    CONSTRAINT animales_precio_venta_check CHECK (((precio_venta IS NULL) OR (precio_venta >= (0)::numeric))),
+    CONSTRAINT animales_precio_venta_maximo CHECK ((precio_venta <= (1000000)::numeric)),
+    CONSTRAINT animales_tipo_check CHECK ((tipo = ANY (ARRAY['Toro'::text, 'Vaca'::text, 'Novilla'::text, 'Novillo'::text, 'Ternera'::text, 'Ternero'::text]))),
+    CONSTRAINT animales_vendido_o_muerto CHECK (((fecha_venta IS NULL) OR (fecha_muerte IS NULL)))
 );
 
-create table if not exists compras (
-  id uuid primary key default gen_random_uuid(),
-  fecha date not null default current_date,
-  descripcion text not null,
-  monto numeric not null check (monto > 0),
-  -- Máximo (el mismo que en src/lib/limites.ts).
-  constraint compras_monto_maximo check (monto <= 250000),
-  -- Vacío = para todos los terneros. Con valor = solo para ese ternero.
-  animal_id uuid references animales(id) on delete restrict,
-  -- Quién lo registró (se llena solo con el usuario que tiene la sesión abierta).
-  usuario_id uuid references auth.users(id) default auth.uid(),
-  creado_en timestamptz not null default now()
+-- Name: aplicacion_animales; Type: TABLE; Schema: public; Owner: -
+
+CREATE TABLE public.aplicacion_animales (
+    aplicacion_id uuid NOT NULL,
+    animal_id uuid NOT NULL,
+    finca_id uuid DEFAULT public.mi_finca() NOT NULL,
+    estado text DEFAULT 'aplicado'::text NOT NULL,
+    CONSTRAINT aplicacion_animales_estado_check CHECK ((estado = ANY (ARRAY['aplicado'::text, 'pendiente'::text])))
 );
 
-create index if not exists idx_compras_animal on compras(animal_id);
+-- Name: aplicaciones; Type: TABLE; Schema: public; Owner: -
 
--- ============ VISTAS ============
+CREATE TABLE public.aplicaciones (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    finca_id uuid DEFAULT public.mi_finca() NOT NULL,
+    fecha date DEFAULT CURRENT_DATE NOT NULL,
+    clase text NOT NULL,
+    producto text NOT NULL,
+    dosis text,
+    grupo text NOT NULL,
+    proxima date,
+    usuario_id uuid DEFAULT auth.uid(),
+    creado_en timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT aplicaciones_check CHECK (((proxima IS NULL) OR (proxima >= fecha))),
+    CONSTRAINT aplicaciones_clase_check CHECK ((clase = ANY (ARRAY['Tratamiento'::text, 'Baño'::text]))),
+    CONSTRAINT aplicaciones_grupo_check CHECK ((grupo = ANY (ARRAY['todos'::text, 'vacas'::text, 'finca'::text, 'potrero'::text, 'elegidos'::text]))),
+    CONSTRAINT aplicaciones_producto_check CHECK ((length(TRIM(BOTH FROM producto)) > 0))
+);
 
--- Parte de cada compra que le toca a cada ternero:
--- - compra para un ternero específico: completa a ese ternero.
--- - compra para todos: dividida en partes iguales entre los terneros que estaban en la
---   finca ese día (ya comprados, y todavía sin vender ni muertos).
-create or replace view v_gasto_animal as
-select c.animal_id, c.id as compra_id, c.fecha, c.descripcion, c.monto as monto_compra,
-  c.monto as monto_animal, false as compartida
-from compras c
-where c.animal_id is not null
-union all
-select a.id, c.id, c.fecha, c.descripcion, c.monto,
-  round(c.monto / count(*) over (partition by c.id), 2), true
-from compras c
-join animales a
-  on a.fecha_compra <= c.fecha
- and (coalesce(a.fecha_venta, a.fecha_muerte) is null
-      or coalesce(a.fecha_venta, a.fecha_muerte) > c.fecha)
-where c.animal_id is null;
+-- Name: compras; Type: TABLE; Schema: public; Owner: -
 
--- ganancia: en un ternero que murió es la pérdida de todo lo invertido.
-create or replace view v_resumen_animal as
-select
-  a.id as animal_id,
-  a.nombre,
-  a.fecha_compra,
-  a.precio_compra,
-  coalesce(g.gastos, 0) as gastos,
-  a.precio_compra + coalesce(g.gastos, 0) as invertido,
-  a.fecha_venta,
-  a.precio_venta,
-  case
-    when a.fecha_muerte is not null then -(a.precio_compra + coalesce(g.gastos, 0))
-    else a.precio_venta - (a.precio_compra + coalesce(g.gastos, 0))
-  end as ganancia,
-  coalesce(a.fecha_venta, a.fecha_muerte, current_date) - a.fecha_compra as dias,
-  a.creado_en,
-  a.fecha_muerte
-from animales a
-left join (select animal_id, sum(monto_animal) as gastos from v_gasto_animal group by animal_id) g
-  on g.animal_id = a.id;
+CREATE TABLE public.compras (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    fecha date DEFAULT CURRENT_DATE NOT NULL,
+    descripcion text NOT NULL,
+    monto numeric NOT NULL,
+    usuario_id uuid DEFAULT auth.uid(),
+    creado_en timestamp with time zone DEFAULT now() NOT NULL,
+    animal_id uuid,
+    finca_id uuid DEFAULT public.mi_finca() NOT NULL,
+    CONSTRAINT compras_monto_check CHECK ((monto > (0)::numeric)),
+    CONSTRAINT compras_monto_maximo CHECK ((monto <= (250000)::numeric))
+);
 
--- Totales. compras_sin_ternero: compras "para todos" de un día en que no había terneros en
--- la finca (por ejemplo, si se anotó un saco antes de registrar los terneros). Cuentan en el
--- total pero no se le cargan a ninguno, así que se muestran aparte para que se noten.
-create or replace view v_resumen as
-select
-  (select count(*) from animales where fecha_venta is null and fecha_muerte is null)
-    as terneros_en_finca,
-  (select count(*) from animales where fecha_venta is not null) as terneros_vendidos,
-  (select coalesce(sum(precio_compra), 0) from animales) as total_ganado,
-  (select coalesce(sum(monto), 0) from compras) as total_compras,
-  (select coalesce(sum(precio_venta), 0) from animales) as total_ventas,
-  (select coalesce(sum(precio_venta), 0) from animales)
-    - (select coalesce(sum(precio_compra), 0) from animales)
-    - (select coalesce(sum(monto), 0) from compras) as balance,
-  (select coalesce(sum(monto), 0) from compras c
-    where not exists (select 1 from v_gasto_animal g where g.compra_id = c.id)
-  ) as compras_sin_ternero,
-  (select count(*) from animales where fecha_muerte is not null) as terneros_muertos;
+-- Name: cuentas_finca; Type: TABLE; Schema: public; Owner: -
 
--- Postgres 15+: hace que las vistas respeten el RLS del usuario que consulta.
-alter view v_gasto_animal set (security_invoker = on);
-alter view v_resumen_animal set (security_invoker = on);
-alter view v_resumen set (security_invoker = on);
+CREATE TABLE public.cuentas_finca (
+    usuario_id uuid NOT NULL,
+    finca_id uuid NOT NULL,
+    creado_en timestamp with time zone DEFAULT now() NOT NULL
+);
 
--- ============ SEGURIDAD ============
--- Solo los usuarios con sesión (los socios, creados a mano en Authentication -> Add user)
--- pueden leer y escribir. Nadie sin sesión puede.
+-- Name: fincas; Type: TABLE; Schema: public; Owner: -
 
-alter table animales enable row level security;
-alter table compras enable row level security;
+CREATE TABLE public.fincas (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    nombre text NOT NULL,
+    creado_en timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT fincas_nombre_check CHECK ((length(TRIM(BOTH FROM nombre)) > 0))
+);
 
-create policy "autenticados_todo_animales" on animales
-  for all using (auth.uid() is not null) with check (auth.uid() is not null);
+-- Name: v_gasto_animal; Type: VIEW; Schema: public; Owner: -
 
-create policy "autenticados_todo_compras" on compras
-  for all using (auth.uid() is not null) with check (auth.uid() is not null);
+CREATE VIEW public.v_gasto_animal WITH (security_invoker='on') AS
+ SELECT c.animal_id,
+    c.id AS compra_id,
+    c.fecha,
+    c.descripcion,
+    c.monto AS monto_compra,
+    c.monto AS monto_animal,
+    false AS compartida
+   FROM public.compras c
+  WHERE (c.animal_id IS NOT NULL)
+UNION ALL
+ SELECT a.id AS animal_id,
+    c.id AS compra_id,
+    c.fecha,
+    c.descripcion,
+    c.monto AS monto_compra,
+    round((c.monto / (count(*) OVER (PARTITION BY c.id))::numeric), 2) AS monto_animal,
+    true AS compartida
+   FROM (public.compras c
+     JOIN public.animales a ON (((a.finca_id = c.finca_id) AND (a.duenio IS NULL) AND (a.fecha_compra <= c.fecha) AND ((COALESCE(a.fecha_venta, a.fecha_muerte) IS NULL) OR (COALESCE(a.fecha_venta, a.fecha_muerte) > c.fecha)))))
+  WHERE (c.animal_id IS NULL);
 
-grant select, insert, update, delete on animales, compras to authenticated;
-grant select on v_gasto_animal, v_resumen_animal, v_resumen to authenticated;
+-- Name: v_resumen; Type: VIEW; Schema: public; Owner: -
+
+CREATE VIEW public.v_resumen WITH (security_invoker='on') AS
+ SELECT ( SELECT count(*) AS count
+           FROM public.animales
+          WHERE ((animales.fecha_venta IS NULL) AND (animales.fecha_muerte IS NULL))) AS terneros_en_finca,
+    ( SELECT count(*) AS count
+           FROM public.animales
+          WHERE (animales.fecha_venta IS NOT NULL)) AS terneros_vendidos,
+    ( SELECT COALESCE(sum(animales.precio_compra), (0)::numeric) AS "coalesce"
+           FROM public.animales) AS total_ganado,
+    ( SELECT COALESCE(sum(compras.monto), (0)::numeric) AS "coalesce"
+           FROM public.compras) AS total_compras,
+    ( SELECT COALESCE(sum(animales.precio_venta), (0)::numeric) AS "coalesce"
+           FROM public.animales) AS total_ventas,
+    ((( SELECT COALESCE(sum(animales.precio_venta), (0)::numeric) AS "coalesce"
+           FROM public.animales) - ( SELECT COALESCE(sum(animales.precio_compra), (0)::numeric) AS "coalesce"
+           FROM public.animales)) - ( SELECT COALESCE(sum(compras.monto), (0)::numeric) AS "coalesce"
+           FROM public.compras)) AS balance,
+    ( SELECT COALESCE(sum(c.monto), (0)::numeric) AS "coalesce"
+           FROM public.compras c
+          WHERE (NOT (EXISTS ( SELECT 1
+                   FROM public.v_gasto_animal g
+                  WHERE (g.compra_id = c.id))))) AS compras_sin_ternero,
+    ( SELECT count(*) AS count
+           FROM public.animales
+          WHERE (animales.fecha_muerte IS NOT NULL)) AS terneros_muertos;
+
+-- Name: v_resumen_animal; Type: VIEW; Schema: public; Owner: -
+
+CREATE VIEW public.v_resumen_animal WITH (security_invoker='on') AS
+ SELECT a.id AS animal_id,
+    a.nombre,
+    a.fecha_compra,
+    a.precio_compra,
+    COALESCE(g.gastos, (0)::numeric) AS gastos,
+    (a.precio_compra + COALESCE(g.gastos, (0)::numeric)) AS invertido,
+    a.fecha_venta,
+    a.precio_venta,
+        CASE
+            WHEN (a.fecha_muerte IS NOT NULL) THEN (- (a.precio_compra + COALESCE(g.gastos, (0)::numeric)))
+            ELSE (a.precio_venta - (a.precio_compra + COALESCE(g.gastos, (0)::numeric)))
+        END AS ganancia,
+    (COALESCE(a.fecha_venta, a.fecha_muerte, CURRENT_DATE) - a.fecha_compra) AS dias,
+    a.creado_en,
+    a.fecha_muerte,
+    a.finca_id,
+    a.tipo,
+    a.color,
+    a.fecha_nacimiento,
+    a.madre_id,
+    a.duenio,
+    a.lugar,
+    a.nota
+   FROM (public.animales a
+     LEFT JOIN ( SELECT v_gasto_animal.animal_id,
+            sum(v_gasto_animal.monto_animal) AS gastos
+           FROM public.v_gasto_animal
+          GROUP BY v_gasto_animal.animal_id) g ON ((g.animal_id = a.id)));
+
+-- Name: animales animales_id_finca_unico; Type: CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.animales
+    ADD CONSTRAINT animales_id_finca_unico UNIQUE (id, finca_id);
+
+-- Name: animales animales_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.animales
+    ADD CONSTRAINT animales_pkey PRIMARY KEY (id);
+
+-- Name: aplicacion_animales aplicacion_animales_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.aplicacion_animales
+    ADD CONSTRAINT aplicacion_animales_pkey PRIMARY KEY (aplicacion_id, animal_id);
+
+-- Name: aplicaciones aplicaciones_id_finca_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.aplicaciones
+    ADD CONSTRAINT aplicaciones_id_finca_id_key UNIQUE (id, finca_id);
+
+-- Name: aplicaciones aplicaciones_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.aplicaciones
+    ADD CONSTRAINT aplicaciones_pkey PRIMARY KEY (id);
+
+-- Name: compras compras_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.compras
+    ADD CONSTRAINT compras_pkey PRIMARY KEY (id);
+
+-- Name: cuentas_finca cuentas_finca_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.cuentas_finca
+    ADD CONSTRAINT cuentas_finca_pkey PRIMARY KEY (usuario_id);
+
+-- Name: fincas fincas_nombre_key; Type: CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.fincas
+    ADD CONSTRAINT fincas_nombre_key UNIQUE (nombre);
+
+-- Name: fincas fincas_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.fincas
+    ADD CONSTRAINT fincas_pkey PRIMARY KEY (id);
+
+-- Name: idx_animales_finca; Type: INDEX; Schema: public; Owner: -
+
+CREATE INDEX idx_animales_finca ON public.animales USING btree (finca_id);
+
+-- Name: idx_animales_madre; Type: INDEX; Schema: public; Owner: -
+
+CREATE INDEX idx_animales_madre ON public.animales USING btree (madre_id);
+
+-- Name: idx_aplicacion_animales_animal; Type: INDEX; Schema: public; Owner: -
+
+CREATE INDEX idx_aplicacion_animales_animal ON public.aplicacion_animales USING btree (animal_id);
+
+-- Name: idx_aplicaciones_finca_fecha; Type: INDEX; Schema: public; Owner: -
+
+CREATE INDEX idx_aplicaciones_finca_fecha ON public.aplicaciones USING btree (finca_id, fecha DESC);
+
+-- Name: idx_compras_animal; Type: INDEX; Schema: public; Owner: -
+
+CREATE INDEX idx_compras_animal ON public.compras USING btree (animal_id);
+
+-- Name: idx_compras_finca; Type: INDEX; Schema: public; Owner: -
+
+CREATE INDEX idx_compras_finca ON public.compras USING btree (finca_id);
+
+-- Name: idx_cuentas_finca_finca; Type: INDEX; Schema: public; Owner: -
+
+CREATE INDEX idx_cuentas_finca_finca ON public.cuentas_finca USING btree (finca_id);
+
+-- Name: animales animales_finca_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.animales
+    ADD CONSTRAINT animales_finca_id_fkey FOREIGN KEY (finca_id) REFERENCES public.fincas(id) ON DELETE RESTRICT;
+
+-- Name: animales animales_madre_misma_finca; Type: FK CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.animales
+    ADD CONSTRAINT animales_madre_misma_finca FOREIGN KEY (madre_id, finca_id) REFERENCES public.animales(id, finca_id) ON DELETE SET NULL (madre_id);
+
+-- Name: animales animales_usuario_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.animales
+    ADD CONSTRAINT animales_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES auth.users(id);
+
+-- Name: aplicacion_animales aplicacion_animales_animal_id_finca_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.aplicacion_animales
+    ADD CONSTRAINT aplicacion_animales_animal_id_finca_id_fkey FOREIGN KEY (animal_id, finca_id) REFERENCES public.animales(id, finca_id) ON DELETE CASCADE;
+
+-- Name: aplicacion_animales aplicacion_animales_aplicacion_id_finca_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.aplicacion_animales
+    ADD CONSTRAINT aplicacion_animales_aplicacion_id_finca_id_fkey FOREIGN KEY (aplicacion_id, finca_id) REFERENCES public.aplicaciones(id, finca_id) ON DELETE CASCADE;
+
+-- Name: aplicaciones aplicaciones_finca_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.aplicaciones
+    ADD CONSTRAINT aplicaciones_finca_id_fkey FOREIGN KEY (finca_id) REFERENCES public.fincas(id) ON DELETE RESTRICT;
+
+-- Name: aplicaciones aplicaciones_usuario_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.aplicaciones
+    ADD CONSTRAINT aplicaciones_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES auth.users(id);
+
+-- Name: compras compras_animal_misma_finca; Type: FK CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.compras
+    ADD CONSTRAINT compras_animal_misma_finca FOREIGN KEY (animal_id, finca_id) REFERENCES public.animales(id, finca_id) ON DELETE RESTRICT;
+
+-- Name: compras compras_finca_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.compras
+    ADD CONSTRAINT compras_finca_id_fkey FOREIGN KEY (finca_id) REFERENCES public.fincas(id) ON DELETE RESTRICT;
+
+-- Name: compras compras_usuario_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.compras
+    ADD CONSTRAINT compras_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES auth.users(id);
+
+-- Name: cuentas_finca cuentas_finca_finca_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.cuentas_finca
+    ADD CONSTRAINT cuentas_finca_finca_id_fkey FOREIGN KEY (finca_id) REFERENCES public.fincas(id) ON DELETE CASCADE;
+
+-- Name: cuentas_finca cuentas_finca_usuario_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.cuentas_finca
+    ADD CONSTRAINT cuentas_finca_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+-- Name: animales; Type: ROW SECURITY; Schema: public; Owner: -
+
+ALTER TABLE public.animales ENABLE ROW LEVEL SECURITY;
+
+-- Name: aplicacion_animales; Type: ROW SECURITY; Schema: public; Owner: -
+
+ALTER TABLE public.aplicacion_animales ENABLE ROW LEVEL SECURITY;
+
+-- Name: aplicaciones; Type: ROW SECURITY; Schema: public; Owner: -
+
+ALTER TABLE public.aplicaciones ENABLE ROW LEVEL SECURITY;
+
+-- Name: compras; Type: ROW SECURITY; Schema: public; Owner: -
+
+ALTER TABLE public.compras ENABLE ROW LEVEL SECURITY;
+
+-- Name: cuentas_finca; Type: ROW SECURITY; Schema: public; Owner: -
+
+ALTER TABLE public.cuentas_finca ENABLE ROW LEVEL SECURITY;
+
+-- Name: animales finca_propia_animales; Type: POLICY; Schema: public; Owner: -
+
+CREATE POLICY finca_propia_animales ON public.animales USING ((finca_id = public.mi_finca())) WITH CHECK ((finca_id = public.mi_finca()));
+
+-- Name: aplicacion_animales finca_propia_aplicacion_animales; Type: POLICY; Schema: public; Owner: -
+
+CREATE POLICY finca_propia_aplicacion_animales ON public.aplicacion_animales USING ((finca_id = public.mi_finca())) WITH CHECK ((finca_id = public.mi_finca()));
+
+-- Name: aplicaciones finca_propia_aplicaciones; Type: POLICY; Schema: public; Owner: -
+
+CREATE POLICY finca_propia_aplicaciones ON public.aplicaciones USING ((finca_id = public.mi_finca())) WITH CHECK ((finca_id = public.mi_finca()));
+
+-- Name: compras finca_propia_compras; Type: POLICY; Schema: public; Owner: -
+
+CREATE POLICY finca_propia_compras ON public.compras USING ((finca_id = public.mi_finca())) WITH CHECK ((finca_id = public.mi_finca()));
+
+-- Name: fincas; Type: ROW SECURITY; Schema: public; Owner: -
+
+ALTER TABLE public.fincas ENABLE ROW LEVEL SECURITY;
+
+-- Name: fincas ver_finca_propia; Type: POLICY; Schema: public; Owner: -
+
+CREATE POLICY ver_finca_propia ON public.fincas FOR SELECT USING ((id = public.mi_finca()));
+
+\unrestrict hChPDiicxKjdy4Svo2DiPIBzTn0RNsBRs1ce9FPdcdbAfcoockNboYmhUO8hps5
+
+
+-- ============ PERMISOS ============
+grant DELETE, INSERT, SELECT, UPDATE on animales to authenticated;
+grant DELETE, INSERT, SELECT, UPDATE on aplicacion_animales to authenticated;
+grant DELETE, INSERT, SELECT, UPDATE on aplicaciones to authenticated;
+grant DELETE, INSERT, SELECT, UPDATE on compras to authenticated;
+grant SELECT on fincas to authenticated;
+grant SELECT on v_gasto_animal to authenticated;
+grant SELECT on v_resumen to authenticated;
+grant SELECT on v_resumen_animal to authenticated;
+revoke execute on function public.mi_finca() from public, anon;
+grant execute on function public.mi_finca() to authenticated;
+revoke execute on function public.asignar_finca(text, text) from public, anon, authenticated;
