@@ -1,0 +1,14 @@
+<!-- Ícono de la app para la pantalla de inicio del celular (de aquí salen los PNG de
+     public/). Fondo terracota a todo el cuadro: el celular le redondea las esquinas solo. El
+     toro ocupa el centro, dentro de la zona que Android respeta al recortarlo en círculo. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#b0602f"/>
+  <g transform="translate(102.4 96) scale(12.8)" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2.5 5.5c1.2 2.4 3.4 3.6 6.3 3.6"/>
+    <path d="M21.5 5.5c-1.2 2.4-3.4 3.6-6.3 3.6"/>
+    <path d="M8.2 10.4 5 11.6c.9 1.1 2.2 1.5 3.6 1.2"/>
+    <path d="M15.8 10.4 19 11.6c-.9 1.1-2.2 1.5-3.6 1.2"/>
+    <path d="M8.8 9.1h6.4l.6 4.3-1.1 4.4a2.6 2.6 0 0 1-2.5 2h-.4a2.6 2.6 0 0 1-2.5-2l-1.1-4.4z"/>
+    <path d="M10.4 17.2h3.2"/>
+  </g>
+</svg>

@@ -1,10 +1,11 @@
 :root {
-  --bg: #151515;
-  --surface: #262626;
-  --surface-alt: #303030;
-  --border: #3f3f3f;
-  --text: #f5f5f4;
-  --text-muted: #a8a29e;
+  /* Tonos tierra oscuros, cálidos para combinar con el terracota y el paisaje de fondo. */
+  --bg: #141210;
+  --surface: #221e1a;
+  --surface-alt: #2d2823;
+  --border: #3d362f;
+  --text: #f4efe8;
+  --text-muted: #aaa096;
   /* Terracota: fondo de botones (con letra blanca) y, más claro, para texto sobre el fondo. */
   --accent: #b0602f;
   --accent-strong: #c2703d;
@@ -33,9 +34,13 @@ html {
 
 body {
   margin: 0;
-  background: var(--bg);
+  /* Un brillo tenue de atardecer arriba, sobre el fondo oscuro. */
+  background:
+    radial-gradient(ellipse 90% 45% at 50% -8%, rgba(176, 96, 47, 0.16), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
   color: var(--text);
-  font-family: 'Sora', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
   overflow-x: hidden;
 }
@@ -61,7 +66,9 @@ button {
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  background: var(--bg);
+  background: rgba(20, 18, 16, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   z-index: 10;
 }
 
@@ -108,7 +115,7 @@ main {
 }
 
 .nav-bottom a .icon {
-  font-size: 1.25rem;
+  display: flex;
 }
 
 .nav-bottom a.active {
@@ -116,8 +123,15 @@ main {
   font-weight: 700;
 }
 
+h1,
 h2 {
-  font-size: 1.15rem;
+  font-family: 'Bitter', Georgia, serif;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+h2 {
+  font-size: 1.35rem;
   margin: 0 0 12px;
 }
 
@@ -503,17 +517,47 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  /* Deja espacio abajo para que se vea el paisaje debajo de la tarjeta. */
+  padding: 24px 20px 30vh;
+}
+
+@media (min-width: 900px) {
+  .login-wrap {
+    padding-bottom: 120px;
+  }
 }
 
 .login-card {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 340px;
+  max-width: 360px;
+  padding: 28px 24px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  /* Transparente para que se vea el paisaje detrás. */
+  background: rgba(28, 22, 18, 0.55);
+  border-color: rgba(255, 220, 190, 0.14);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.login-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  margin-bottom: 14px;
 }
 
 .login-card h1 {
-  font-size: 1.4rem;
-  margin-bottom: 4px;
+  font-size: 1.8rem;
+  margin: 0 0 4px;
 }
 
 .login-card p {
@@ -625,4 +669,432 @@ h2 {
     transform: translateY(0);
     opacity: 1;
   }
+}
+
+/* ===== Hato y sanidad ===== */
+
+.marca-texto {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.marca-texto small {
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--accent-text);
+  letter-spacing: 0.02em;
+}
+
+
+
+/* Chips para filtrar y para elegir grupo */
+.chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 10px 0 4px;
+  scrollbar-width: none;
+}
+
+.chips button {
+  flex: 0 0 auto;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.chips button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.chips-form {
+  flex-wrap: wrap;
+  padding-top: 0;
+}
+
+.filtros {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 8px 0 4px;
+}
+
+.filtros label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.filtros select {
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+/* Etiquetas pequeñas: tipo, lugar, dueño */
+.etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.etiquetas-ficha {
+  margin: -6px 0 14px;
+}
+
+.etiqueta {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.etiqueta-tipo {
+  align-self: flex-start;
+  background: rgba(176, 96, 47, 0.18);
+  border-color: rgba(227, 145, 92, 0.35);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.etiqueta-ajeno {
+  background: rgba(96, 140, 200, 0.14);
+  border-color: rgba(130, 170, 225, 0.35);
+  color: #a9c4ec;
+}
+
+.tarjeta-animal {
+  align-items: flex-start;
+}
+
+.texto-alerta {
+  color: var(--danger);
+}
+
+/* Botón con apariencia de enlace (mamá, animales pendientes) */
+.enlace {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.btn-mini {
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.form-en-ficha {
+  margin-top: 14px;
+  background: var(--surface-alt);
+}
+
+.form-en-ficha .field input,
+.form-en-ficha .field select {
+  background: var(--surface);
+}
+
+/* Elegir animales en una aplicación */
+.eleccion {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin-bottom: 14px;
+}
+
+.eleccion-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.eleccion-item small {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.eleccion-item.aplicado {
+  border-color: var(--success);
+  background: rgba(74, 222, 128, 0.12);
+}
+
+.eleccion-item.aplicado small {
+  color: var(--success);
+}
+
+.eleccion-item.pendiente {
+  border-color: #e0b04a;
+  background: rgba(224, 176, 74, 0.12);
+}
+
+.eleccion-item.pendiente small {
+  color: #e0b04a;
+}
+
+.pendientes-grupo {
+  margin-bottom: 14px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.pendientes-grupo summary {
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.field label + .chips {
+  margin-top: 2px;
+}
+
+.etiqueta-alerta {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: var(--danger);
+}
+
+/* Etiqueta que se puede tocar (nombres de animales en una aplicación) */
+.etiqueta-boton {
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+/* Dos campos del mismo ancho (la fila normal le da más espacio a la fecha) */
+.field-row-igual {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field select {
+  appearance: auto;
+}
+
+code {
+  font-size: 0.9em;
+}
+
+/* ===== Computadora (pantallas anchas) =====
+   En el celular la app ocupa una columna con las pestañas abajo. En pantallas anchas las
+   pestañas pasan al encabezado, Compras se divide en formulario y lista, los terneros se
+   acomodan en cuadrícula y las ventanas salen centradas. */
+
+.nav-top {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  html {
+    font-size: 15px;
+  }
+
+  #root {
+    max-width: 1100px;
+  }
+
+  .app-header {
+    gap: 24px;
+    padding: 14px 24px;
+  }
+
+  .app-header h1 {
+    font-size: 1.2rem;
+    white-space: nowrap;
+  }
+
+  .nav-top {
+    display: flex;
+    flex: 1;
+    gap: 6px;
+  }
+
+  .nav-top a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .nav-top a:hover {
+    color: var(--text);
+  }
+
+  .nav-top a.active {
+    background: var(--surface-alt);
+    color: var(--accent-text);
+  }
+
+  .nav-bottom {
+    display: none;
+  }
+
+  main {
+    padding: 28px 24px 40px;
+  }
+
+  .dos-columnas {
+    display: grid;
+    grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+    gap: 32px;
+    align-items: start;
+  }
+
+  /* El formulario se queda visible mientras se baja por la lista. */
+  .columna-formulario {
+    position: sticky;
+    top: 90px;
+  }
+
+  .columna-lista {
+    padding-top: 34px;
+  }
+
+  .lista-tarjetas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 10px;
+  }
+
+  .lista-tarjetas .lista-item {
+    height: 100%;
+    margin-bottom: 0;
+  }
+
+  .lista-item:hover {
+    border-color: var(--text-muted);
+  }
+
+  .modal-backdrop {
+    align-items: center;
+    padding: 24px;
+  }
+
+  .modal-sheet {
+    max-width: 560px;
+    max-height: 85vh;
+    border-bottom: 1px solid var(--border);
+    border-radius: 20px;
+    padding-bottom: 24px;
+  }
+
+  .toast-stack {
+    bottom: 24px;
+  }
+}
+
+/* ===== Marca y paisaje ===== */
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.marca-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* El paisaje va fijo abajo, detrás de todo, y no recibe toques. */
+.paisaje {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.paisaje-fondo {
+  height: 240px;
+  /* En el celular empieza encima de la barra de pestañas de abajo, que si no lo tapa. */
+  bottom: calc(62px + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 900px) {
+  .paisaje-fondo {
+    bottom: 0;
+  }
+}
+
+.paisaje-atardecer {
+  height: 45vh;
+}
+
+@media (min-width: 900px) {
+  .paisaje-atardecer {
+    height: 62vh;
+  }
+}
+
+.paisaje-fondo .colina-lejana { fill: #2e2219; }
+.paisaje-fondo .colina-media { fill: #251c16; }
+.paisaje-fondo .colina-cercana { fill: #1c1612; }
+.paisaje-fondo .arbol { fill: #221a14; stroke: #221a14; }
+.paisaje-fondo .cerca { fill: #17120f; stroke: #17120f; }
+
+.paisaje-atardecer .colina-lejana { fill: #3a2418; }
+.paisaje-atardecer .colina-media { fill: #2a1c15; }
+.paisaje-atardecer .colina-cercana { fill: #1a1411; }
+.paisaje-atardecer .arbol { fill: #1f1612; stroke: #1f1612; }
+.paisaje-atardecer .cerca { fill: #15100d; stroke: #15100d; }
+
+
+/* El contenido va encima del paisaje (el encabezado y las pestañas ya están encima porque
+   son sticky con z-index). */
+main {
+  position: relative;
+  z-index: 1;
+}
+
+.nav-bottom {
+  z-index: 10;
 }

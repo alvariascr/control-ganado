@@ -1,16 +1,19 @@
-# 🐂 Control Ganado
+# Control Ganado
 
-App web sencilla para llevar el registro de compras y ventas de los terneros entre los socios.
-Pensada para usarse desde el celular: cada socio inicia sesión, anota lo que se compra
-(terneros, concentrado, pacas, medicina...) y lo que se vende, y la app muestra cuánto se ha
-invertido, cuánto se ha vendido y la ganancia.
+App web para llevar el control de una o varias fincas de ganado: el hato (con mamás, crías,
+dueños y lugar), la sanidad (tratamientos y baños) y la plata (compras, lo invertido en cada
+animal, ventas y ganancia). Funciona en el celular y en la computadora.
+
+Cada cuenta entra a una sola finca y solo ve los datos de esa finca.
 
 ## 1. Base de datos (Supabase)
 
 1. En el proyecto de Supabase, ir a **SQL Editor → New query**, pegar todo
    [`supabase/schema.sql`](supabase/schema.sql) y darle **Run**.
-2. En **Authentication → Users → Add user → Create new user**, crear un usuario (correo y
-   contraseña) para cada socio, marcando **Auto Confirm User**. No hay registro público.
+2. En **Authentication → Users → Add user → Create new user**, crear una cuenta (correo y
+   contraseña), marcando **Auto Confirm User**. No hay registro público.
+3. Asignarle su finca en el SQL Editor (si la finca no existe, se crea):
+   `select asignar_finca('correo@ejemplo.com', 'Nombre de la finca');`
 
 ## 2. Correr la app en la computadora
 
@@ -40,15 +43,22 @@ npm run dev
 
 ## Cómo está organizada
 
-- **Compras**: productos (concentrado, pacas, medicina...). Cada compra puede ser "para todos
-  los terneros" (se divide en partes iguales entre los que estaban en la finca ese día) o para
-  un ternero específico (se le carga completa). Tocar una compra para editarla o eliminarla.
-- **Ganado**: lista de terneros con lo invertido en cada uno (o la ganancia, si ya se vendió).
-  Al tocar uno se ve el detalle de en qué se le ha gastado, y ahí se registra la venta, se
-  editan sus datos o se elimina.
+- **Ganado**: el hato (toros, vacas, novillas, novillos y crías) con filtros por tipo, lugar
+  (finca o potrero) y dueño. Al tocar un animal se abre su ficha: datos, mamá y crías,
+  registrar parto, moverlo de lugar, su historial de sanidad y, si es de la finca, la plata
+  (lo invertido, en qué, y la venta o muerte).
+- **Sanidad**: tratamientos y baños. Se registran para todo el hato, un grupo o animales
+  elegidos, con los que quedaron pendientes y la próxima fecha. Muestra lo próximo a aplicar
+  (en rojo si ya venció), los pendientes y el historial.
+- **Compras**: los gastos con plata. Cada compra puede ser "para todos los animales de la
+  finca" (se divide en partes iguales entre los que estaban ese día; el ganado de otros dueños
+  no entra) o para un animal específico.
 
 ## Cambios a la base
 
 Si la base ya existe, correr en orden los scripts de [`supabase/migraciones/`](supabase/migraciones)
 que todavía no se hayan corrido. [`supabase/schema.sql`](supabase/schema.sql) es el esquema
 completo, solo para una base nueva.
+
+Antes de correr un script en Supabase, se prueba en un Postgres local: ver
+[`supabase/pruebas/`](supabase/pruebas).

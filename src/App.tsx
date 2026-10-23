@@ -6,6 +6,7 @@ import Layout from './components/Layout'
 import Login from './pages/Login'
 import Compras from './pages/Compras'
 import Ganado from './pages/Ganado'
+import Sanidad from './pages/Sanidad'
 
 export default function App() {
   return (
@@ -21,8 +22,10 @@ export default function App() {
                 </ProtectedRoute>
               }
             >
-              <Route path="/" element={<Compras />} />
-              <Route path="/ganado" element={<Ganado />} />            </Route>
+              <Route path="/" element={<Ganado />} />
+              <Route path="/sanidad" element={<Sanidad />} />
+              <Route path="/compras" element={<Compras />} />
+            </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </ToastProvider>

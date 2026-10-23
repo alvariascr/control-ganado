@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
+import { IconoToro } from '../components/Iconos'
+import Paisaje from '../components/Paisaje'
 import { useAuth } from '../lib/AuthContext'
 
 export default function Login() {
@@ -22,8 +24,12 @@ export default function Login() {
 
   return (
     <div className="login-wrap">
+      <Paisaje variante="atardecer" />
       <div className="login-card">
-        <h1>🐂 Control Ganado</h1>
+        <span className="login-logo">
+          <IconoToro tamano={34} />
+        </span>
+        <h1>Control Ganado</h1>
         <p>Inicia sesión para registrar compras y ganado.</p>
         {error && <div className="msg error">{error}</div>}
         <form onSubmit={handleSubmit}>

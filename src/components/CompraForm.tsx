@@ -9,13 +9,13 @@ const PARA_TODOS = ''
 // Formulario de compra. Se usa para agregar (vacío) y para editar (con valores).
 export default function CompraForm({
   inicial,
-  terneros,
+  animales,
   textoBoton,
   onGuardar,
 }: {
   inicial?: CompraInput
-  // Terneros que se pueden elegir en "Para".
-  terneros: { id: string; nombre: string }[]
+  // Animales que se pueden elegir en "Para".
+  animales: { id: string; nombre: string }[]
   textoBoton: string
   // Devuelve true si se guardó, para limpiar el formulario solo en ese caso.
   onGuardar: (datos: CompraInput) => Promise<boolean>
@@ -82,8 +82,8 @@ export default function CompraForm({
       <div className="field">
         <label htmlFor="para">Para</label>
         <select id="para" value={para} onChange={(e) => setPara(e.target.value)}>
-          <option value={PARA_TODOS}>Todos los terneros</option>
-          {terneros.map((t) => (
+          <option value={PARA_TODOS}>Todos los animales de la finca</option>
+          {animales.map((t) => (
             <option key={t.id} value={t.id}>
               Solo {t.nombre}
             </option>
