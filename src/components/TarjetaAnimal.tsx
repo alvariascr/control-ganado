@@ -43,8 +43,9 @@ export default function TarjetaAnimal({
         <span className="etiquetas">
           {activo && <span className="etiqueta">{animal.lugar}</span>}
           {!esDeLaFinca(animal) && <span className="etiqueta etiqueta-ajeno">{animal.duenio}</span>}
-          {animal.nota && <span className="etiqueta etiqueta-alerta">{animal.nota}</span>}
         </span>
+        {/* En la tarjeta la nota se corta a dos líneas; completa se ve en la ficha. */}
+        {animal.nota && <span className="tarjeta-nota">{animal.nota}</span>}
       </span>
       <span className="lista-valor">
         <span className="etiqueta etiqueta-tipo">{animal.tipo}</span>

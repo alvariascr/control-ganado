@@ -786,6 +786,27 @@ h2 {
   align-items: flex-start;
 }
 
+/* Nota del animal en la tarjeta: baja de línea y se corta a dos líneas. */
+.tarjeta-nota {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  margin-top: 6px;
+  color: var(--danger);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* Ninguna etiqueta puede salirse de su tarjeta. */
+.etiqueta {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .texto-alerta {
   color: var(--danger);
 }
