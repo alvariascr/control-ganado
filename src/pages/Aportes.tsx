@@ -10,6 +10,27 @@ import { supabase } from '../lib/supabaseClient'
 import { useToast } from '../lib/ToastContext'
 import type { Aportante, Aporte } from '../lib/types'
 
+interface SemanaResumen {
+  lunes: string
+  total: number
+  faltaron: string[]
+  // La semana en curso: todavía no se cuenta como incompleta.
+  enCurso: boolean
+}
+
+interface Mes {
+  // AAAA-MM
+  clave: string
+  semanas: SemanaResumen[]
+}
+
+// "2026-10" -> "Octubre 2026"
+function nombreMes(clave: string) {
+  const [y, m] = clave.split('-').map(Number)
+  const mes = new Date(y, m - 1, 1).toLocaleDateString('es-CR', { month: 'long' })
+  return `${mes.charAt(0).toUpperCase()}${mes.slice(1)} ${y}`
+}
+
 // Plata que pone cada persona por semana para pagarles a los trabajadores. Es un gasto de la
 // finca aparte: no se suma a lo invertido en los animales.
 export default function Aportes() {
@@ -23,6 +44,8 @@ export default function Aportes() {
   const [abiertaId, setAbiertaId] = useState<string | null>(null)
   const [viendoPersonas, setViendoPersonas] = useState(false)
   const [guardandoId, setGuardandoId] = useState<string | null>(null)
+  // Meses desplegados en la lista; el mes actual empieza abierto.
+  const [mesesAbiertos, setMesesAbiertos] = useState(() => new Set([estaSemana.slice(0, 7)]))
 
   const cargar = useCallback(async () => {
     const [personasRes, aportesRes] = await Promise.all([
@@ -78,8 +101,7 @@ export default function Aportes() {
     await cargar()
   }
 
-  const nombres = new Map(personas.map((p) => [p.id, p.nombre]))
-  const deLaSemana = aportes.filter((a) => a.semana === semana)
+    const deLaSemana = aportes.filter((a) => a.semana === semana)
   // En la semana se ven los que aportan ahora y también quien ya no aporta pero sí puso esa semana.
   const filas = personas.filter((p) => p.activo || deLaSemana.some((a) => a.aportante_id === p.id))
   const totalSemana = deLaSemana.reduce((s, a) => s + Number(a.monto), 0)
@@ -93,8 +115,57 @@ export default function Aportes() {
     })
     .filter((x) => x.semanas > 0)
 
-  const semanas = new Map<string, Aporte[]>()
-  for (const a of aportes) semanas.set(a.semana, [...(semanas.get(a.semana) ?? []), a])
+  // Primera y última semana en que aportó cada persona, para saber en qué semanas le tocaba.
+  const desde = new Map<string, string>()
+  const hasta = new Map<string, string>()
+  for (const a of aportes) {
+    if (!desde.has(a.aportante_id) || a.semana < desde.get(a.aportante_id)!) desde.set(a.aportante_id, a.semana)
+    if (!hasta.has(a.aportante_id) || a.semana > hasta.get(a.aportante_id)!) hasta.set(a.aportante_id, a.semana)
+  }
+  function faltaron(lunes: string, deEsa: Aporte[]) {
+    return personas.filter(
+      (p) =>
+        desde.has(p.id) &&
+        desde.get(p.id)! <= lunes &&
+        (p.activo || hasta.get(p.id)! >= lunes) &&
+        !deEsa.some((a) => a.aportante_id === p.id)
+    )
+  }
+
+  // Todas las semanas desde el primer aporte hasta hoy (también las que nadie aportó),
+  // agrupadas por mes (el mes del lunes), de la más reciente a la más vieja.
+  const meses: Mes[] = []
+  if (aportes.length > 0) {
+    const primera = aportes.reduce((m, a) => (a.semana < m ? a.semana : m), aportes[0].semana)
+    for (let lunes = estaSemana; lunes >= primera; lunes = sumarDias(lunes, -7)) {
+      const deEsa = aportes.filter((a) => a.semana === lunes)
+      const fila: SemanaResumen = {
+        lunes,
+        total: deEsa.reduce((s, a) => s + Number(a.monto), 0),
+        faltaron: faltaron(lunes, deEsa).map((p) => p.nombre),
+        enCurso: lunes === estaSemana,
+      }
+      const clave = lunes.slice(0, 7)
+      const mes = meses.find((m) => m.clave === clave)
+      if (mes) mes.semanas.push(fila)
+      else meses.push({ clave, semanas: [fila] })
+    }
+  }
+
+  function irASemana(lunes: string) {
+    setSemana(lunes)
+    // En el celular la semana elegida está arriba de la lista.
+    document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function alternarMes(clave: string) {
+    setMesesAbiertos((abiertos) => {
+      const nuevos = new Set(abiertos)
+      if (nuevos.has(clave)) nuevos.delete(clave)
+      else nuevos.add(clave)
+      return nuevos
+    })
+  }
 
   const abierta = personas.find((p) => p.id === abiertaId) ?? null
   const aporteAbierto = deLaSemana.find((a) => a.aportante_id === abiertaId)
@@ -174,7 +245,7 @@ export default function Aportes() {
             <span>Total de la semana</span>
             <strong>
               {formatoColones(totalSemana)}
-              {semana === estaSemana || totalSemana < esperado ? (
+              {totalSemana < esperado ? (
                 <small> de {formatoColones(esperado)}</small>
               ) : null}
             </strong>
@@ -207,28 +278,72 @@ export default function Aportes() {
           </>
         )}
 
-        <div className="section-title">Semanas</div>
-        {semanas.size === 0 ? (
+        <div className="section-title">Por mes</div>
+        {meses.length === 0 ? (
           <div className="empty-state">Todavía no hay aportes anotados.</div>
         ) : (
           <ul className="lista">
-            {[...semanas.entries()].map(([lunes, deEsa]) => (
-              <li key={lunes}>
-                <button className="lista-item" onClick={() => setSemana(lunes)}>
-                  <span className="lista-texto">
-                    <span className="lista-descripcion">
-                      {rangoSemana(lunes)} {lunes.slice(0, 4)}
+            {meses.map((mes) => {
+              const abierto = mesesAbiertos.has(mes.clave)
+              const cerradas = mes.semanas.filter((w) => !w.enCurso)
+              const incompletas = cerradas.filter((w) => w.faltaron.length > 0).length
+              const n = cerradas.length
+              return (
+                <li key={mes.clave}>
+                  <button
+                    className="lista-item"
+                    aria-expanded={abierto}
+                    onClick={() => alternarMes(mes.clave)}
+                  >
+                    <span className="lista-texto">
+                      <span className="lista-descripcion">
+                        <span className={`flecha-mes ${abierto ? 'abierta' : ''}`}>›</span> {nombreMes(mes.clave)}
+                      </span>
+                      {incompletas > 0 ? (
+                        <span className="lista-detalle texto-alerta">
+                          Faltó alguien en {incompletas} {incompletas === 1 ? 'semana' : 'semanas'}
+                        </span>
+                      ) : n > 0 ? (
+                        <span className="lista-detalle">
+                          {n} {n === 1 ? 'semana' : 'semanas'}, todos aportaron
+                        </span>
+                      ) : (
+                        <span className="lista-detalle">Semana en curso</span>
+                      )}
                     </span>
-                    <span className="lista-detalle">
-                      {deEsa.map((a) => nombres.get(a.aportante_id) ?? '?').join(', ')}
+                    <span className="lista-monto">
+                      {formatoColones(mes.semanas.reduce((s, w) => s + w.total, 0))}
                     </span>
-                  </span>
-                  <span className="lista-monto">
-                    {formatoColones(deEsa.reduce((s, a) => s + Number(a.monto), 0))}
-                  </span>
-                </button>
-              </li>
-            ))}
+                  </button>
+                  {abierto && (
+                    <ul className="lista lista-semanas">
+                      {mes.semanas.map((w) => (
+                        <li key={w.lunes}>
+                          <button
+                            className={`lista-item lista-item-sub ${w.lunes === semana ? 'lista-item-elegido' : ''}`}
+                            onClick={() => irASemana(w.lunes)}
+                          >
+                            <span className="lista-texto">
+                              <span className="lista-descripcion">{rangoSemana(w.lunes)}</span>
+                              {w.enCurso ? (
+                                <span className="lista-detalle">
+                                  Esta semana{w.faltaron.length > 0 && ` · falta ${w.faltaron.join(', ')}`}
+                                </span>
+                              ) : w.faltaron.length > 0 ? (
+                                <span className="lista-detalle texto-alerta">
+                                  Faltó {w.faltaron.join(', ')}
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="lista-monto">{formatoColones(w.total)}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>

@@ -1002,10 +1002,11 @@ code {
     align-items: start;
   }
 
-  /* El formulario se queda visible mientras se baja por la lista. */
+  /* El formulario se queda visible mientras se baja por la lista. El que hace scroll es
+     <main> (debajo del encabezado), así que se pega a su borde de arriba. */
   .columna-formulario {
     position: sticky;
-    top: 90px;
+    top: 0;
   }
 
   .columna-lista {
@@ -1216,4 +1217,30 @@ main {
   width: 18px;
   height: 18px;
   accent-color: var(--accent);
+}
+
+/* Lista de aportes por mes: las semanas de un mes desplegado van un poco metidas. */
+.flecha-mes {
+  display: inline-block;
+  width: 0.8em;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+
+.flecha-mes.abierta {
+  transform: rotate(90deg);
+}
+
+.lista-semanas {
+  margin: -2px 0 10px 14px;
+}
+
+.lista-item.lista-item-sub {
+  padding: 9px 12px;
+  margin-bottom: 6px;
+  background: transparent;
+}
+
+.lista-item-sub .lista-descripcion {
+  font-size: 0.88rem;
 }
