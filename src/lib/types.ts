@@ -90,3 +90,19 @@ export interface AplicacionAnimal {
   animal_id: string
   estado: EstadoAplicacion
 }
+
+// Persona que pone plata cada semana para pagar a los trabajadores.
+export interface Aportante {
+  id: string
+  nombre: string
+  monto_semanal: number
+  activo: boolean
+}
+
+// Lo que puso una persona en una semana. "semana" es el lunes de esa semana (AAAA-MM-DD).
+export interface Aporte {
+  id: string
+  aportante_id: string
+  semana: string
+  monto: number
+}

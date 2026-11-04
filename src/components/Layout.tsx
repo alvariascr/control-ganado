@@ -2,13 +2,14 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 import { supabase } from '../lib/supabaseClient'
-import { IconoJeringa, IconoSaco, IconoToro } from './Iconos'
+import { IconoJeringa, IconoMonedas, IconoSaco, IconoToro } from './Iconos'
 import Paisaje from './Paisaje'
 
 const tabs: { to: string; label: string; icono: ReactNode; end: boolean }[] = [
   { to: '/', label: 'Ganado', icono: <IconoToro tamano={22} />, end: true },
   { to: '/sanidad', label: 'Sanidad', icono: <IconoJeringa tamano={22} />, end: false },
   { to: '/compras', label: 'Compras', icono: <IconoSaco tamano={22} />, end: false },
+  { to: '/aportes', label: 'Aportes', icono: <IconoMonedas tamano={22} />, end: false },
 ]
 
 // Las pestañas se dibujan dos veces: arriba en el encabezado (computadora) y abajo

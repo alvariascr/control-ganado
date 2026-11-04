@@ -4,6 +4,7 @@ import { ToastProvider } from './lib/ToastContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 import Login from './pages/Login'
+import Aportes from './pages/Aportes'
 import Compras from './pages/Compras'
 import Ganado from './pages/Ganado'
 import Sanidad from './pages/Sanidad'
@@ -25,6 +26,7 @@ export default function App() {
               <Route path="/" element={<Ganado />} />
               <Route path="/sanidad" element={<Sanidad />} />
               <Route path="/compras" element={<Compras />} />
+              <Route path="/aportes" element={<Aportes />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

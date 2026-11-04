@@ -11,10 +11,11 @@
 set check_function_bodies = false;
 
 
-\restrict hChPDiicxKjdy4Svo2DiPIBzTn0RNsBRs1ce9FPdcdbAfcoockNboYmhUO8hps5
+\restrict QERlIUhx9lDErEC09hhm3E2Dv7Gw12qdOGUkhdextie5bpwcYZOJQeHeFeiBlpP
 
 -- Name: public; Type: SCHEMA; Schema: -; Owner: -
 
+-- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: -
 
 -- Name: asignar_finca(text, text); Type: FUNCTION; Schema: public; Owner: -
 
@@ -109,6 +110,33 @@ CREATE TABLE public.aplicaciones (
     CONSTRAINT aplicaciones_clase_check CHECK ((clase = ANY (ARRAY['Tratamiento'::text, 'Baño'::text]))),
     CONSTRAINT aplicaciones_grupo_check CHECK ((grupo = ANY (ARRAY['todos'::text, 'vacas'::text, 'finca'::text, 'potrero'::text, 'elegidos'::text]))),
     CONSTRAINT aplicaciones_producto_check CHECK ((length(TRIM(BOTH FROM producto)) > 0))
+);
+
+-- Name: aportantes; Type: TABLE; Schema: public; Owner: -
+
+CREATE TABLE public.aportantes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    finca_id uuid DEFAULT public.mi_finca() NOT NULL,
+    nombre text NOT NULL,
+    monto_semanal numeric NOT NULL,
+    activo boolean DEFAULT true NOT NULL,
+    creado_en timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT aportantes_monto_semanal_check CHECK (((monto_semanal > (0)::numeric) AND (monto_semanal <= (250000)::numeric))),
+    CONSTRAINT aportantes_nombre_check CHECK ((length(TRIM(BOTH FROM nombre)) > 0))
+);
+
+-- Name: aportes; Type: TABLE; Schema: public; Owner: -
+
+CREATE TABLE public.aportes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    finca_id uuid DEFAULT public.mi_finca() NOT NULL,
+    aportante_id uuid NOT NULL,
+    semana date NOT NULL,
+    monto numeric NOT NULL,
+    usuario_id uuid DEFAULT auth.uid(),
+    creado_en timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT aportes_monto_check CHECK (((monto > (0)::numeric) AND (monto <= (250000)::numeric))),
+    CONSTRAINT aportes_semana_check CHECK ((EXTRACT(isodow FROM semana) = (1)::numeric))
 );
 
 -- Name: compras; Type: TABLE; Schema: public; Owner: -
@@ -252,6 +280,31 @@ ALTER TABLE ONLY public.aplicaciones
 ALTER TABLE ONLY public.aplicaciones
     ADD CONSTRAINT aplicaciones_pkey PRIMARY KEY (id);
 
+-- Name: aportantes aportantes_finca_id_nombre_key; Type: CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.aportantes
+    ADD CONSTRAINT aportantes_finca_id_nombre_key UNIQUE (finca_id, nombre);
+
+-- Name: aportantes aportantes_id_finca_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.aportantes
+    ADD CONSTRAINT aportantes_id_finca_id_key UNIQUE (id, finca_id);
+
+-- Name: aportantes aportantes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.aportantes
+    ADD CONSTRAINT aportantes_pkey PRIMARY KEY (id);
+
+-- Name: aportes aportes_aportante_id_semana_key; Type: CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.aportes
+    ADD CONSTRAINT aportes_aportante_id_semana_key UNIQUE (aportante_id, semana);
+
+-- Name: aportes aportes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.aportes
+    ADD CONSTRAINT aportes_pkey PRIMARY KEY (id);
+
 -- Name: compras compras_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 
 ALTER TABLE ONLY public.compras
@@ -287,6 +340,10 @@ CREATE INDEX idx_aplicacion_animales_animal ON public.aplicacion_animales USING 
 -- Name: idx_aplicaciones_finca_fecha; Type: INDEX; Schema: public; Owner: -
 
 CREATE INDEX idx_aplicaciones_finca_fecha ON public.aplicaciones USING btree (finca_id, fecha DESC);
+
+-- Name: idx_aportes_finca_semana; Type: INDEX; Schema: public; Owner: -
+
+CREATE INDEX idx_aportes_finca_semana ON public.aportes USING btree (finca_id, semana DESC);
 
 -- Name: idx_compras_animal; Type: INDEX; Schema: public; Owner: -
 
@@ -335,6 +392,21 @@ ALTER TABLE ONLY public.aplicaciones
 ALTER TABLE ONLY public.aplicaciones
     ADD CONSTRAINT aplicaciones_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES auth.users(id);
 
+-- Name: aportantes aportantes_finca_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.aportantes
+    ADD CONSTRAINT aportantes_finca_id_fkey FOREIGN KEY (finca_id) REFERENCES public.fincas(id) ON DELETE RESTRICT;
+
+-- Name: aportes aportes_aportante_id_finca_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.aportes
+    ADD CONSTRAINT aportes_aportante_id_finca_id_fkey FOREIGN KEY (aportante_id, finca_id) REFERENCES public.aportantes(id, finca_id) ON DELETE RESTRICT;
+
+-- Name: aportes aportes_usuario_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+
+ALTER TABLE ONLY public.aportes
+    ADD CONSTRAINT aportes_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES auth.users(id);
+
 -- Name: compras compras_animal_misma_finca; Type: FK CONSTRAINT; Schema: public; Owner: -
 
 ALTER TABLE ONLY public.compras
@@ -372,6 +444,14 @@ ALTER TABLE public.aplicacion_animales ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.aplicaciones ENABLE ROW LEVEL SECURITY;
 
+-- Name: aportantes; Type: ROW SECURITY; Schema: public; Owner: -
+
+ALTER TABLE public.aportantes ENABLE ROW LEVEL SECURITY;
+
+-- Name: aportes; Type: ROW SECURITY; Schema: public; Owner: -
+
+ALTER TABLE public.aportes ENABLE ROW LEVEL SECURITY;
+
 -- Name: compras; Type: ROW SECURITY; Schema: public; Owner: -
 
 ALTER TABLE public.compras ENABLE ROW LEVEL SECURITY;
@@ -392,6 +472,14 @@ CREATE POLICY finca_propia_aplicacion_animales ON public.aplicacion_animales USI
 
 CREATE POLICY finca_propia_aplicaciones ON public.aplicaciones USING ((finca_id = public.mi_finca())) WITH CHECK ((finca_id = public.mi_finca()));
 
+-- Name: aportantes finca_propia_aportantes; Type: POLICY; Schema: public; Owner: -
+
+CREATE POLICY finca_propia_aportantes ON public.aportantes USING ((finca_id = public.mi_finca())) WITH CHECK ((finca_id = public.mi_finca()));
+
+-- Name: aportes finca_propia_aportes; Type: POLICY; Schema: public; Owner: -
+
+CREATE POLICY finca_propia_aportes ON public.aportes USING ((finca_id = public.mi_finca())) WITH CHECK ((finca_id = public.mi_finca()));
+
 -- Name: compras finca_propia_compras; Type: POLICY; Schema: public; Owner: -
 
 CREATE POLICY finca_propia_compras ON public.compras USING ((finca_id = public.mi_finca())) WITH CHECK ((finca_id = public.mi_finca()));
@@ -404,13 +492,15 @@ ALTER TABLE public.fincas ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY ver_finca_propia ON public.fincas FOR SELECT USING ((id = public.mi_finca()));
 
-\unrestrict hChPDiicxKjdy4Svo2DiPIBzTn0RNsBRs1ce9FPdcdbAfcoockNboYmhUO8hps5
+\unrestrict QERlIUhx9lDErEC09hhm3E2Dv7Gw12qdOGUkhdextie5bpwcYZOJQeHeFeiBlpP
 
 
 -- ============ PERMISOS ============
 grant DELETE, INSERT, SELECT, UPDATE on animales to authenticated;
 grant DELETE, INSERT, SELECT, UPDATE on aplicacion_animales to authenticated;
 grant DELETE, INSERT, SELECT, UPDATE on aplicaciones to authenticated;
+grant DELETE, INSERT, SELECT, UPDATE on aportantes to authenticated;
+grant DELETE, INSERT, SELECT, UPDATE on aportes to authenticated;
 grant DELETE, INSERT, SELECT, UPDATE on compras to authenticated;
 grant SELECT on fincas to authenticated;
 grant SELECT on v_gasto_animal to authenticated;

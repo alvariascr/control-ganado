@@ -53,6 +53,10 @@ npm run dev
 - **Compras**: los gastos con plata. Cada compra puede ser "para todos los animales de la
   finca" (se divide en partes iguales entre los que estaban ese día; el ganado de otros dueños
   no entra) o para un animal específico.
+- **Aportes**: la plata que pone cada persona por semana para pagarles a los trabajadores.
+  Cada persona tiene su aporte semanal de siempre, que se anota con un toque (o con otro
+  monto si esa semana fue distinto). Muestra el total de la semana, lo que lleva cada persona
+  y las semanas anteriores. Es un gasto aparte: no se suma a lo invertido en los animales.
 
 ## Cambios a la base
 

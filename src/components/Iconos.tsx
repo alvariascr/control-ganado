@@ -82,3 +82,26 @@ export function IconoSaco({ tamano = 24, className }: PropsIcono) {
     </svg>
   )
 }
+
+export function IconoMonedas({ tamano = 24, className }: PropsIcono) {
+  return (
+    <svg
+      width={tamano}
+      height={tamano}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      {/* Una moneda de frente y una pila detrás */}
+      <circle cx="9" cy="9" r="6" />
+      <path d="M9 6.5v5" />
+      <path d="M15.5 7.2a6 6 0 1 1-6.3 9.9" />
+      <path d="M19.4 12.6a6 6 0 0 1-2.1 6.1" />
+    </svg>
+  )
+}

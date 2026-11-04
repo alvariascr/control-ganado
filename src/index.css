@@ -1119,3 +1119,101 @@ main {
 .nav-bottom {
   z-index: 10;
 }
+
+/* ============ APORTES ============ */
+
+.texto-ayuda {
+  margin: 4px 0 12px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.selector-semana {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.selector-semana span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.selector-semana small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.selector-semana button {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.selector-semana button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Fila de una persona que todavía no aportó: el nombre abre el formulario y el botón
+   anota el aporte de siempre. */
+.fila-abrir {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+
+.btn-mini:disabled {
+  opacity: 0.5;
+}
+
+.total-semana {
+  margin-top: 6px;
+  border-bottom: none;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.total-bar strong small {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 0.8rem;
+}
+
+.lista-item.lista-item-elegido {
+  border-color: var(--accent);
+}
+
+.field-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 14px;
+  font-size: 0.9rem;
+}
+
+.field-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
